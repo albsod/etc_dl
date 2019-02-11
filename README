@@ -1,0 +1,54 @@
+ETC-dl - Download Dagens ETC
+=============================================================
+-------------------------------------------------------------
+Copyright (c) 2018-2019  Albin Söderqvist <albin@fripost.org>
+License: GNU GPLv3 or, at your option, any later version.
+-------------------------------------------------------------
+
+
+What and how?
+-------------
+
+When you subscribe to the digital edition of Dagens ETC
+(see https://www.etc.se), you receive a URL that starts with
+"http://gantrack5.com/".  If you open this in a web browser,
+the URL of the actual issue is displayed with some added
+nonsense.
+
+ETC-dl tries to generate a clean HTTPS URL to the current,
+a previous or even a future issue my means of date arithmetic,
+and then download it using libcurl.  Run the program with the
+-h option for complete usage information.
+
+
+Compilation and installation
+----------------------------
+
+1. Install the curl library
+
+2. Run make
+
+3. Move the single binary to your path, e.g.
+# mv etc-dl /usr/local/bin/
+
+
+Known limitations
+-----------------
+
+The program will stop working
+  1) if Dagens ETC doesn't come out a particular day,
+     because then the date will increase but not the issue;
+  2) if the URL should take a different form;
+  3) if URL access should be blocked.
+
+The first can be easily fixed by modifying the KNOWN_DATE
+and KNOWN_ISSUE constants and recompiling the program.  The
+second may also be fixable but requires a bit more work.
+In the third case, I believe the program becomes useless.
+
+
+Final words
+-----------
+
+I'm happy to receive any contributions to albin@fripost.org.
+Also, if you read ETC, please support them by subscribing.
