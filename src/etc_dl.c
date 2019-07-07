@@ -36,8 +36,8 @@
 #include "date.h"
 #define	PATH_SIZE 1024
 /* If the program stops working, try to update the two constants below */
-#define KNOWN_DATE "2019-07-08"
-#define KNOWN_ISSUE 182
+#define KNOWN_DATE "2019-07-07"
+#define KNOWN_ISSUE 181
 
 /* Function prototypes */
 
@@ -169,7 +169,7 @@ static char *get_url(long int mod_date)
 	char month[3];
 	strftime(month, 3 ,"%m", timeinfo); /* %y%m%d */
 
-	char *etc_url = malloc(sizeof (char) * 80);
+	char *etc_url = malloc(sizeof (char) * 81);
 	/* e.g. "https://www.etc.se/sites/all/files/papers/2018/07/dagensetc180703nr177.pdf" */
 
 	const char *a = "https://www.etc.se/sites/all/files/papers/";
@@ -194,7 +194,7 @@ static char *get_url(long int mod_date)
 	const char *e = ".pdf";
 
 	/* Generate the URL */
-	snprintf(etc_url, 80, "%s%s/%s/%s%s%s%s%s",
+	snprintf(etc_url, 81, "%s%s/%s/%s%s%s%s%s",
 		 a, year, month, b, c, d, issue, e);
 
 	return etc_url;

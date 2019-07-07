@@ -1,4 +1,4 @@
-CFLAGS  =-Wall -Wextra -pedantic
+CFLAGS  =-Wall -Wextra -pedantic -O3
 FILES   = src/platform.c src/date.c src/curly.c src/clopt.c
 LDFLAGS =-lcurl
 
