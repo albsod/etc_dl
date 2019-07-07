@@ -36,9 +36,8 @@
 #include "date.h"
 #define	PATH_SIZE 1024
 /* If the program stops working, try to update the two constants below */
-#define KNOWN_DATE "2019-05-27"
-#define KNOWN_ISSUE 143
-
+#define KNOWN_DATE "2019-07-08"
+#define KNOWN_ISSUE 182
 
 /* Function prototypes */
 
