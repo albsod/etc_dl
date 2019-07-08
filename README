@@ -41,8 +41,8 @@ The program will stop working
   2) if the URL should take a different form;
   3) if URL access should be blocked.
 
-The first can be easily fixed by modifying the KNOWN_DATE
-and KNOWN_ISSUE constants and recompiling the program.  The
+The first can be easily fixed by modifying the known good
+date and issue values in "~/.config/etc-dl/config".  The
 second may also be fixable but requires a bit more work.
 In the third case, I believe the program becomes useless.
 
@@ -50,5 +50,5 @@ In the third case, I believe the program becomes useless.
 Final words
 -----------
 
-I'm happy to receive any contributions to albin@fripost.org.
+You're welcome to contact me at albin@fripost.org.
 Also, if you read ETC, please support them by subscribing.
