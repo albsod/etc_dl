@@ -30,18 +30,17 @@
 #include <string.h>
 #include <ctype.h>
 #include <getopt.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "clopt.h"
 #include "platform.h"
 #include "curly.h"
 #include "date.h"
 #define	PATH_SIZE 1024
-/* If the program stops working, try to update the two constants below */
-#define KNOWN_DATE "2019-07-07"
-#define KNOWN_ISSUE 181
 
 /* Function prototypes */
 
-static char *get_url(long int mod_date);
+static char *get_url(long int mod_date, const char *known_date, const char *known_issue);
 static char *get_path(int target, char *target_dir, char *etc_url);
 static int download(char *path, char *etc_url);
 static void open_file(char *path);
@@ -97,8 +96,71 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	/* Fallback values, in case there is no config file */
+	char known_date[11] = "2019-07-07";
+	char known_issue[4] = "181";
+
+	/* Create config directory */
+	char *config_dir = "/.config/etc-dl/";
+	char config_path[PATH_SIZE] = "";
+	strcat(config_path, getenv("HOME"));
+	strcat(config_path, config_dir);
+
+	struct stat st = {0};
+
+	if (stat(config_path, &st) == -1) {
+		mkdir(config_path, 0700);
+		printf("Configuration directory created at \"%s\".\n", config_path);
+	}
+	strcat(config_path, "config");
+
+	FILE *conf;
+	if ((conf = fopen(config_path, "r")) != NULL) {
+		int i = 0, c;
+
+		while ((c = fgetc(conf)) != '\n' && i < 10) {
+			known_date[i] = c;
+			i++;
+		}
+		known_date[i] = '\0';
+		i = 0;
+		while ((c = fgetc(conf)) != '\n' && i < 3) {
+			known_issue[i] = c;
+			i++;
+		}
+		known_issue[i] = '\0';
+
+		fclose(conf);
+	} else {
+		printf("Config file not found. Creating it now.\n");
+		if ((conf = fopen(config_path, "w")) != NULL) {
+			fprintf(conf, known_date);
+			fprintf(conf, "\n");
+			fprintf(conf, known_issue);
+			fprintf(conf, "\n");
+			fclose(conf);
+		}
+
+	}
+
+	/* Verify date and issue format; exit if any is invalid */
+	for (int i = 0; i < 10; i++) {
+		if (isdigit(known_date[i]) == 0 && known_date[i] != '-') {
+			fprintf(stderr, "Invalid date format. Please edit \"%s\" and try again.\n", config_path);
+			exit(1);
+		}
+	}
+	for (int i = 0; i < 3; i++) {
+		if (isdigit(known_issue[i]) == 0) {
+			fprintf(stderr, "Invalid issue format. Please edit \"%s\" and try again.\n", config_path);
+			exit(1);
+		}
+	}
+
+	printf("Last known date and issue: %s, %s.\n", known_date, known_issue);
+
 	/* generate URL */
-	char *etc_url = get_url(mod_date);
+	char *etc_url = get_url(mod_date, known_date, known_issue);
 
 	/* -p option: print the URL to stdout */
 	if (printurl) {
@@ -145,8 +207,9 @@ static char *get_path(int target, char *target_dir, char *etc_url)
 	return path;
 }
 
-static char *get_url(long int mod_date)
+static char *get_url(long int mod_date, const char *known_date, const char *known_issue)
 {
+
 	time_t rawtime;
 	struct tm *timeinfo;
 
@@ -181,14 +244,16 @@ static char *get_url(long int mod_date)
 	const char *c = ymd; /* %y%m%d */
 	const char *d = "nr";
 
-	const long past_date = parse_date(KNOWN_DATE);
+	const long past_date = parse_date(known_date);
 	const long selected_date = (long int) time(0);
 
-	/* KNOWN_DATE (e.g. 2018-07-16) was issue number KNOWN_ISSUE (e.g. 190).
+	/* known_date (e.g. 2018-07-16) was issue number known_issue (e.g. 190).
 	   Subtract the difference between the dates from that number. */
 
+	long known = strtol(known_issue, NULL, 10);
+
 	char issue[10];
-	snprintf(issue, 10, "%ld", ((mod_date + KNOWN_ISSUE)
+	snprintf(issue, 10, "%ld", ((mod_date + known)
 				    - (past_date - selected_date) / (60*60*24) ) );
 
 	const char *e = ".pdf";
