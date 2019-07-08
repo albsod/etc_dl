@@ -134,9 +134,9 @@ int main(int argc, char *argv[])
 	} else {
 		printf("Config file not found. Creating it now.\n");
 		if ((conf = fopen(config_path, "w")) != NULL) {
-			fprintf(conf, known_date);
+			fprintf(conf, "%s", known_date);
 			fprintf(conf, "\n");
-			fprintf(conf, known_issue);
+			fprintf(conf, "%s", known_issue);
 			fprintf(conf, "\n");
 			fclose(conf);
 		}
