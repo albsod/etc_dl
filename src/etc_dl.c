@@ -40,9 +40,9 @@
 
 /* Function prototypes */
 
-static char *get_url(long int mod_date, const char *known_date, const char *known_issue);
-static char *get_path(int target, char *target_dir, char *etc_url);
-static int download(char *path, char *etc_url);
+static char *get_url(const long mod_date, const char *known_date, const long known_issue_long);
+static char *get_path(const int target, const char *target_dir, const char *etc_url);
+static int download(const char *path, const char *etc_url);
 static void open_file(char *path);
 
 int main(int argc, char *argv[])
@@ -159,8 +159,9 @@ int main(int argc, char *argv[])
 
 	printf("Last known date and issue: %s, %s.\n", known_date, known_issue);
 
+	long known_issue_long = strtol(known_issue, NULL, 10);
 	/* generate URL */
-	char *etc_url = get_url(mod_date, known_date, known_issue);
+	char *etc_url = get_url(mod_date, known_date, known_issue_long);
 
 	/* -p option: print the URL to stdout */
 	if (printurl) {
@@ -177,9 +178,54 @@ int main(int argc, char *argv[])
 		/* generate path */
 		char *path = get_path(target, target_dir, etc_url);
 
-		/* If needed, try to download a 2nd time using a different URL */
-		if (download(path, etc_url) == 1)
-			download(path, etc_url);
+		/* If needed, try to download again using a different URL */
+		if (download(path, etc_url) == 1) {
+
+			/* Decrease the month by one and try again */
+			printf("Trying to decrease the month.\n");
+			int mon_fst_digit, mon_snd_digit;
+			if (sscanf(etc_url+47, "%d", &mon_fst_digit) != 1)
+				return -1;
+			if (sscanf(etc_url+48, "%d", &mon_snd_digit) != 1)
+				return -1;
+			if ((strcmp(etc_url+47, "0") == 0) && (strcmp(etc_url+48, "1") == 0)) {
+				return -1;
+			} else if ((strcmp(etc_url+47, "1") == 0) && (strcmp(etc_url+48, "0") == 0)) {
+				etc_url[47] = '0'; etc_url[48] = '9';
+			} else {
+				mon_snd_digit--;
+			}
+			etc_url[48] = mon_snd_digit + '0';
+			if (download(path, etc_url) == 1) {
+				printf("Trying to decrease the issue number.\n");
+				free(etc_url);
+				free(path);
+				char *etc_url_try = malloc(sizeof (char) * 81);
+				char *path_try = malloc(sizeof (char) * PATH_SIZE);
+				int i = 0;
+				while (i < 15) {
+					/* Decrease the issue by one and try again */
+					known_issue_long--;
+					/* generate URL again */
+					etc_url_try = get_url(mod_date, known_date, known_issue_long);
+					path_try = get_path(target, target_dir, etc_url_try);
+					if (download(path_try, etc_url_try) == 0) {
+						free(etc_url_try);
+						if (openpdf) {
+							open_file(path_try);
+						}
+						free(path_try);
+						exit(0);
+					} else {
+						free(etc_url_try);
+						free(path_try);
+						i++;
+					}
+				}
+                                fprintf(stderr, "Unable to guess the URL. Please verify your config file: \"%s\".\n", config_path);
+				exit(0);
+			}
+		}
 
 		free(etc_url);
 
@@ -193,7 +239,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-static char *get_path(int target, char *target_dir, char *etc_url)
+static char *get_path(const int target, const char *target_dir, const char *etc_url)
 {
 	char *path = malloc(sizeof (char) * PATH_SIZE);
 
@@ -207,7 +253,7 @@ static char *get_path(int target, char *target_dir, char *etc_url)
 	return path;
 }
 
-static char *get_url(long int mod_date, const char *known_date, const char *known_issue)
+static char *get_url(const long mod_date, const char *known_date, const long known_issue_long)
 {
 
 	time_t rawtime;
@@ -250,10 +296,10 @@ static char *get_url(long int mod_date, const char *known_date, const char *know
 	/* known_date (e.g. 2018-07-16) was issue number known_issue (e.g. 190).
 	   Subtract the difference between the dates from that number. */
 
-	long known = strtol(known_issue, NULL, 10);
+	//long known = strtol(known_issue, NULL, 10);
 
 	char issue[10];
-	snprintf(issue, 10, "%ld", ((mod_date + known)
+	snprintf(issue, 10, "%ld", ((mod_date + known_issue_long)
 				    - (past_date - selected_date) / (60*60*24) ) );
 
 	const char *e = ".pdf";
@@ -268,13 +314,14 @@ static char *get_url(long int mod_date, const char *known_date, const char *know
 static void open_file(char *path)
 {
 	int ret;
-	char *cmd[] = { " ", path, (char *)0 };
+	// TODO: improve the line below.
+	char *cmd[] = { " ", path, (char *) NULL };
 
- 	/* If the platform is osx, open the file with "open" */
+	/* If the platform is osx, open the file with "open" */
 	if (strcmp(get_platform_name(), "osx") == 0) {
 		ret = execvp("open", cmd);
 		if (ret == -1)
-			printf("Failed to open %s.\n", path);
+			fprintf(stderr, "Failed to open %s.\n", path);
 	}
  	/* For platforms below, open the file with "xdg-open" */
 	else if (   strcmp(get_platform_name(), "linux") == 0
@@ -282,21 +329,21 @@ static void open_file(char *path)
 		|| (strcmp(get_platform_name(), "solaris") == 0)) {
 		ret = execvp("xdg-open", cmd);
 		if (ret == -1)
-			printf("Failed to open %s.\n", path);
+			fprintf(stderr, "Failed to open %s.\n", path);
 	}
 	/* If the platform is cygwin, open the file with "cygstart" */
 	else if (strcmp(get_platform_name(), "cygwin") == 0) {
 		ret = execvp("cygstart", cmd);
 		if (ret == -1)
-			printf("Failed to open %s.\n", path);
+			fprintf(stderr, "Failed to open %s.\n", path);
 	} else {
-		printf("Unable to open the file in %s.", get_platform_name());
-		printf("Please report this to the program's maintainer.");
+		fprintf(stderr, "Unable to open the file in %s.", get_platform_name());
+		fprintf(stderr, "Please report this error to the program's maintainer.");
 	}
 	exit(0);
 }
 
-static int download(char *path, char *etc_url)
+static int download(const char *path, const char *etc_url)
 {
 	printf("Downloading URL: %s\n", etc_url);
 
@@ -348,24 +395,6 @@ static int download(char *path, char *etc_url)
 				/* cleanup curl stuff */
 				curl_easy_cleanup(curl_handle);
 				curl_global_cleanup();
-
-				/* Decrease the month by one and try again */
-
-				int mon_fst_digit, mon_snd_digit;
-				if (sscanf(etc_url+47, "%d", &mon_fst_digit) != 1)
-					return -1;
-				if (sscanf(etc_url+48, "%d", &mon_snd_digit) != 1)
-					return -1;
-				if ((strcmp(etc_url+47, "0") == 0) && (strcmp(etc_url+48, "1") == 0)) {
-					return -1;
-				} else if ((strcmp(etc_url+47, "1") == 0) && (strcmp(etc_url+48, "0") == 0)) {
-					etc_url[47] = '0'; etc_url[48] = '9';
-				} else {
-					mon_snd_digit--;
-				}
-
-				etc_url[48] = mon_snd_digit + '0';
-				printf("Trying to get a different URL.\n");
 
 				return 1;
 			}
