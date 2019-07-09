@@ -37,23 +37,19 @@ Configuration
 
 The program will create a configuration file at
 "~/.config/etc-dl/config".  This should contain the last
-known good date and issue, but it's up to you to keep
-it up to date.
+known good date and issue.
 
 
 Known limitations
 -----------------
 
 Problems may arise
-  1) if Dagens ETC doesn't come out a particular day,
-     because then the date increases but not the issue;
+  1) if Dagens ETC unexpectedly changes the issue number;
   2) if the URL should take a different form;
   3) if URL access should be blocked.
 
-The first can be fixed by updating the config file (see
-above).  ETC-dl will still make several attempts to
-decrement the issue and this seems to be working most of the
-time.  The second problem may also be fixable but requires
+The first can be fixed by manually updating the config file.
+The second problem may also be fixable but requires
 development. In the third case, I believe the program
 becomes useless.
 

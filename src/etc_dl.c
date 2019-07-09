@@ -200,29 +200,45 @@ int main(int argc, char *argv[])
 				printf("Trying to decrease the issue number.\n");
 				free(etc_url);
 				free(path);
-				char *etc_url_try = malloc(sizeof (char) * 81);
-				char *path_try = malloc(sizeof (char) * PATH_SIZE);
+				char *etc_url = malloc(sizeof (char) * 81);
+				char *path = malloc(sizeof (char) * PATH_SIZE);
 				int i = 0;
 				while (i < 15) {
 					/* Decrease the issue by one and try again */
 					known_issue_long--;
 					/* generate URL again */
-					etc_url_try = get_url(mod_date, known_date, known_issue_long);
-					path_try = get_path(target, target_dir, etc_url_try);
-					if (download(path_try, etc_url_try) == 0) {
-						free(etc_url_try);
-						if (openpdf) {
-							open_file(path_try);
+					etc_url = get_url(mod_date, known_date, known_issue_long);
+					path = get_path(target, target_dir, etc_url);
+					if (download(path, etc_url) == 0) {
+						/* Update config file to last known date and issue*/
+						if (mod_date == 0) {
+							if ((conf = fopen(config_path, "w")) != NULL) {
+								puts("Updating config file");
+								fprintf(conf, "20%c%c-%c%c-%c%c", etc_url[59], etc_url[60],
+									etc_url[61], etc_url[62], etc_url[63], etc_url[64]);
+								fprintf(conf, "\n");
+								fprintf(conf, "%c", etc_url[67]);
+								if (etc_url[68] != '.')
+									fprintf(conf, "%c", etc_url[68]);
+								if (etc_url[69] != '.')
+									fprintf(conf, "%c", etc_url[69]);
+								fprintf(conf, "\n");
+								fclose(conf);
+							}
 						}
-						free(path_try);
+						free(etc_url);
+						if (openpdf) {
+							open_file(path);
+						}
+						free(path);
 						exit(0);
 					} else {
-						free(etc_url_try);
-						free(path_try);
+						free(etc_url);
+						free(path);
 						i++;
 					}
 				}
-                                fprintf(stderr, "Unable to guess the URL. Please verify your config file: \"%s\".\n", config_path);
+				fprintf(stderr, "Unable to guess the URL. Please verify your config file: \"%s\".\n", config_path);
 				exit(0);
 			}
 		}
@@ -295,8 +311,6 @@ static char *get_url(const long mod_date, const char *known_date, const long kno
 
 	/* known_date (e.g. 2018-07-16) was issue number known_issue (e.g. 190).
 	   Subtract the difference between the dates from that number. */
-
-	//long known = strtol(known_issue, NULL, 10);
 
 	char issue[10];
 	snprintf(issue, 10, "%ld", ((mod_date + known_issue_long)
