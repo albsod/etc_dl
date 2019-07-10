@@ -24,7 +24,8 @@ and then download it using libcurl.  Run the program with the
 Compilation and installation
 ----------------------------
 
-1. Install the curl library
+1. Install the curl library, e.g. libcurl4-gnutls-dev or
+   libcurl4-openssl-dev on Debian Buster.
 
 2. Run make
 
