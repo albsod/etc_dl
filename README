@@ -24,13 +24,14 @@ and then download it using libcurl.  Run the program with the
 Compilation and installation
 ----------------------------
 
-1. Install the curl library, e.g. libcurl4-gnutls-dev or
-   libcurl4-openssl-dev on Debian Buster.
+1. Install a curl development package, e.g.
+   libcurl4-gnutls-dev or libcurl4-openssl-dev
+   on Debian GNU/Linux and derivatives
 
 2. Run make
 
 3. Move the single binary to your path, e.g.
-# mv etc-dl /usr/local/bin/
+   # mv etc-dl /usr/local/bin/
 
 
 Configuration

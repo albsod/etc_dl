@@ -30,6 +30,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <getopt.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "clopt.h"
@@ -180,7 +181,6 @@ int main(int argc, char *argv[])
 
 		/* If needed, try to download again using a different URL */
 		if (download(path, etc_url) == 1) {
-
 			/* Decrease the month by one and try again */
 			printf("Trying to decrease the month.\n");
 			int mon_fst_digit, mon_snd_digit;
@@ -200,27 +200,25 @@ int main(int argc, char *argv[])
 				printf("Trying to decrease the issue number.\n");
 				free(etc_url);
 				free(path);
-				char *etc_url = malloc(sizeof (char) * 81);
-				char *path = malloc(sizeof (char) * PATH_SIZE);
 				int i = 0;
 				while (i < 15) {
 					/* Decrease the issue by one and try again */
 					known_issue_long--;
 					/* generate URL again */
-					etc_url = get_url(mod_date, known_date, known_issue_long);
-					path = get_path(target, target_dir, etc_url);
+					char *etc_url = get_url(mod_date, known_date, known_issue_long);
+					char *path = get_path(target, target_dir, etc_url);
 					if (download(path, etc_url) == 0) {
 						/* Update config file to last known date and issue*/
-						if (mod_date == 0) {
+						if (mod_date >= 0) {
 							if ((conf = fopen(config_path, "w")) != NULL) {
-								puts("Updating config file");
+								puts("Updating the config file.");
 								fprintf(conf, "20%c%c-%c%c-%c%c", etc_url[59], etc_url[60],
 									etc_url[61], etc_url[62], etc_url[63], etc_url[64]);
 								fprintf(conf, "\n");
 								fprintf(conf, "%c", etc_url[67]);
-								if (etc_url[68] != '.')
+								if (isdigit(etc_url[68]) != 0)
 									fprintf(conf, "%c", etc_url[68]);
-								if (etc_url[69] != '.')
+								if (isdigit(etc_url[69]) != 0)
 									fprintf(conf, "%c", etc_url[69]);
 								fprintf(conf, "\n");
 								fclose(conf);
@@ -239,7 +237,7 @@ int main(int argc, char *argv[])
 					}
 				}
 				fprintf(stderr, "Unable to guess the URL. Please verify your config file: \"%s\".\n", config_path);
-				exit(0);
+				exit(1);
 			}
 		}
 
@@ -330,31 +328,54 @@ static void open_file(char *path)
 	int ret;
 	// TODO: improve the line below.
 	char *cmd[] = { " ", path, (char *) NULL };
+	pid_t child;
 
 	/* If the platform is osx, open the file with "open" */
 	if (strcmp(get_platform_name(), "osx") == 0) {
-		ret = execvp("open", cmd);
-		if (ret == -1)
-			fprintf(stderr, "Failed to open %s.\n", path);
+		child = fork();
+		if (0 == child) {
+			ret = execvp("open", cmd);
+			if (ret == -1) {
+				fprintf(stderr, "Failed to open %s.\n", path);
+				free(path);
+				exit(1);
+			}
+		}
 	}
  	/* For platforms below, open the file with "xdg-open" */
 	else if (   strcmp(get_platform_name(), "linux") == 0
 		|| (strcmp(get_platform_name(), "bsd") == 0)
 		|| (strcmp(get_platform_name(), "solaris") == 0)) {
-		ret = execvp("xdg-open", cmd);
-		if (ret == -1)
-			fprintf(stderr, "Failed to open %s.\n", path);
-	}
+		child = fork();
+		if (0 == child) {
+			ret = execvp("xdg-open", cmd);
+			if (ret == -1) {
+				fprintf(stderr, "Failed to open %s.\n", path);
+				free(path);
+				exit(1);
+			}
+		}
 	/* If the platform is cygwin, open the file with "cygstart" */
-	else if (strcmp(get_platform_name(), "cygwin") == 0) {
-		ret = execvp("cygstart", cmd);
-		if (ret == -1)
-			fprintf(stderr, "Failed to open %s.\n", path);
+	} else if (strcmp(get_platform_name(), "cygwin") == 0) {
+		child = fork();
+		if (0 == child) {
+			ret = execvp("cygstart", cmd);
+			if (ret == -1) {
+				fprintf(stderr, "Failed to open %s.\n", path);
+				free(path);
+				exit(1);
+			}
+		}
 	} else {
 		fprintf(stderr, "Unable to open the file in %s.", get_platform_name());
 		fprintf(stderr, "Please report this error to the program's maintainer.");
+		exit(1);
 	}
-	exit(0);
+	if (child != 0) {
+		sleep(1);
+		/* Terminate the child process */
+		kill(child,SIGTERM);
+	}
 }
 
 static int download(const char *path, const char *etc_url)
