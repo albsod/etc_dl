@@ -18,7 +18,7 @@
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
- * This program makes use of the curl library
+ * This program includes code from the the curl project
  * Copyright (c) 1996-2019  Daniel Stenberg <daniel@haxx.se> et al.
  * See the copyright and permission notice in your libcurl package.
  *
@@ -39,18 +39,20 @@
 #include "date.h"
 #define	PATH_SIZE 1024
 
-/* Function prototypes */
-
-static char *get_url(const long mod_date, const char *known_date, const long known_issue_long);
-static char *get_path(const int target, const char *target_dir, const char *etc_url);
+static char *get_url(const long mod_date, const char *known_date,
+		     const long known_issue_long);
+static char *get_path(const int target, const char *target_dir,
+		      const char *etc_url);
 static int download(const char *path, const char *etc_url);
 static void open_file(char *path);
+static int decrease_month(char *etc_url);
+static void update_config(FILE *conf, char *config_path, char *etc_url);
 
 int main(int argc, char *argv[])
 {
 	/* Variables */
 	int opt, printurl = 0, openpdf = 0, target = 0, errflg = 0;
-	long int mod_date = 0;
+	long mod_date = 0;
 	char *target_dir = NULL;
 	extern char *optarg;
 	extern int optind, opterr, optopt;
@@ -69,6 +71,10 @@ int main(int argc, char *argv[])
 		case 't':
 			target = 1;
 			target_dir = optarg;
+			/* Remove trailing '/' */
+			size_t len = strlen(target_dir);
+			if (target_dir[len-1] == '/')
+				target_dir[len-1] = '\0';
 			break;
 		case 'd':
 			mod_date = strtol(optarg, NULL, 10);
@@ -77,7 +83,8 @@ int main(int argc, char *argv[])
 			openpdf = 1;
 			break;
 		case ':': /* -d or -t without operand */
-			fprintf(stderr, "Option -%c requires an operand\n", optopt);
+			fprintf(stderr, "Option -%c requires an operand\n",
+				optopt);
 			errflg++;
 			break;
 		case '?':
@@ -111,7 +118,8 @@ int main(int argc, char *argv[])
 
 	if (stat(config_path, &st) == -1) {
 		mkdir(config_path, 0700);
-		printf("Configuration directory created at \"%s\".\n", config_path);
+		printf("Configuration directory created at \"%s\".\n",
+		       config_path);
 	}
 	strcat(config_path, "config");
 
@@ -147,18 +155,20 @@ int main(int argc, char *argv[])
 	/* Verify date and issue format; exit if any is invalid */
 	for (int i = 0; i < 10; i++) {
 		if (isdigit(known_date[i]) == 0 && known_date[i] != '-') {
-			fprintf(stderr, "Invalid date format. Please edit \"%s\" and try again.\n", config_path);
+			fprintf(stderr, "Invalid date format. Please edit \"%s\" and try again.\n",
+				config_path);
 			exit(1);
 		}
 	}
 	for (int i = 0; i < 3; i++) {
 		if (isdigit(known_issue[i]) == 0) {
-			fprintf(stderr, "Invalid issue format. Please edit \"%s\" and try again.\n", config_path);
+			fprintf(stderr, "Invalid issue format. Please edit"
+				" \"%s\" and try again.\n", config_path);
 			exit(1);
 		}
 	}
 
-	printf("Last known date and issue: %s, %s.\n", known_date, known_issue);
+	/* printf("Last known date and issue: %s, %s.\n", known_date, known_issue); */
 
 	long known_issue_long = strtol(known_issue, NULL, 10);
 	/* generate URL */
@@ -173,87 +183,76 @@ int main(int argc, char *argv[])
 			open_file(etc_url);
 		}
 		free(etc_url);
-
+		return 0;
+	}
 	/* download */
-	} else {
-		/* generate path */
-		char *path = get_path(target, target_dir, etc_url);
 
-		/* If needed, try to download again using a different URL */
-		if (download(path, etc_url) == 1) {
-			/* Decrease the month by one and try again */
-			printf("Trying to decrease the month.\n");
-			int mon_fst_digit, mon_snd_digit;
-			if (sscanf(etc_url+47, "%d", &mon_fst_digit) != 1)
-				return -1;
-			if (sscanf(etc_url+48, "%d", &mon_snd_digit) != 1)
-				return -1;
-			if ((strcmp(etc_url+47, "0") == 0) && (strcmp(etc_url+48, "1") == 0)) {
-				return -1;
-			} else if ((strcmp(etc_url+47, "1") == 0) && (strcmp(etc_url+48, "0") == 0)) {
-				etc_url[47] = '0'; etc_url[48] = '9';
-			} else {
-				mon_snd_digit--;
-			}
-			etc_url[48] = mon_snd_digit + '0';
-			if (download(path, etc_url) == 1) {
-				printf("Trying to decrease the issue number.\n");
-				free(etc_url);
-				free(path);
-				int i = 0;
-				while (i < 15) {
-					/* Decrease the issue by one and try again */
-					known_issue_long--;
-					/* generate URL again */
-					char *etc_url = get_url(mod_date, known_date, known_issue_long);
-					char *path = get_path(target, target_dir, etc_url);
-					if (download(path, etc_url) == 0) {
-						/* Update config file to last known date and issue*/
-						if (mod_date >= 0) {
-							if ((conf = fopen(config_path, "w")) != NULL) {
-								puts("Updating the config file.");
-								fprintf(conf, "20%c%c-%c%c-%c%c", etc_url[59], etc_url[60],
-									etc_url[61], etc_url[62], etc_url[63], etc_url[64]);
-								fprintf(conf, "\n");
-								fprintf(conf, "%c", etc_url[67]);
-								if (isdigit(etc_url[68]) != 0)
-									fprintf(conf, "%c", etc_url[68]);
-								if (isdigit(etc_url[69]) != 0)
-									fprintf(conf, "%c", etc_url[69]);
-								fprintf(conf, "\n");
-								fclose(conf);
-							}
-						}
-						free(etc_url);
-						if (openpdf) {
-							open_file(path);
-						}
-						free(path);
-						exit(0);
-					} else {
-						free(etc_url);
-						free(path);
-						i++;
-					}
-				}
-				fprintf(stderr, "Unable to guess the URL. Please verify your config file: \"%s\".\n", config_path);
-				exit(1);
-			}
-		}
+	/* generate path */
+	char *path = get_path(target, target_dir, etc_url);
 
-		free(etc_url);
-
+	if (download(path, etc_url) == 0) {
 		/* -o option: open the file locally */
+		free(etc_url);
 		if (openpdf) {
 			open_file(path);
 		}
 		free(path);
+
+		return 0;
+	} else {
+	        /* Retry download using a different URL */
+		/* Decrease the month by one and try again */
+		printf("Decreasing the month in URL.\n");
+		if (decrease_month(etc_url) == -1) {
+			fprintf(stderr, "Unable to to decrease the month.\n");
+		} else if (download(path, etc_url) == 0) {
+			free(etc_url);
+			/* -o option: open the file locally */
+			if (openpdf) {
+				open_file(path);
+			}
+			free(path);
+
+			return 0;
+		}
 	}
 
-	return 0;
+	printf("Decreasing the issue number in URL.\n");
+	free(etc_url);
+	free(path);
+	for (int i = 0; i < 15; i++) {
+		/* Decrease the issue by one and try again */
+		known_issue_long--;
+		/* regenerate URL */
+		char *etc_url = get_url(mod_date, known_date, known_issue_long);
+		char *path = get_path(target, target_dir, etc_url);
+
+		if (download(path, etc_url) == 0) {
+			if (mod_date >= 0) {
+				/* Update config file to
+				   last known date and issue*/
+				update_config(conf, config_path, etc_url);
+			}
+
+			free(etc_url);
+			if (openpdf) {
+				open_file(path);
+			}
+			free(path);
+
+			exit(0);
+		} else {
+			free(etc_url);
+			free(path);
+		}
+	}
+	fprintf(stderr, "Unable to guess the URL. Please verify your config file: \"%s\".\n",
+		config_path);
+	exit(1);
 }
 
-static char *get_path(const int target, const char *target_dir, const char *etc_url)
+static char *get_path(const int target, const char *target_dir,
+		      const char *etc_url)
 {
 	char *path = malloc(sizeof (char) * PATH_SIZE);
 
@@ -267,12 +266,11 @@ static char *get_path(const int target, const char *target_dir, const char *etc_
 	return path;
 }
 
-static char *get_url(const long mod_date, const char *known_date, const long known_issue_long)
+static char *get_url(const long mod_date, const char *known_date,
+		     const long known_issue_long)
 {
-
 	time_t rawtime;
 	struct tm *timeinfo;
-
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 
@@ -293,7 +291,8 @@ static char *get_url(const long mod_date, const char *known_date, const long kno
 	strftime(month, 3 ,"%m", timeinfo); /* %y%m%d */
 
 	char *etc_url = malloc(sizeof (char) * 81);
-	/* e.g. "https://www.etc.se/sites/all/files/papers/2018/07/dagensetc180703nr177.pdf" */
+	/* e.g. "https://www.etc.se/sites/all/files/papers/2018/07/
+	   dagensetc180703nr177.pdf" */
 
 	const char *a = "https://www.etc.se/sites/all/files/papers/";
 	const char *b = "dagensetc";
@@ -312,7 +311,7 @@ static char *get_url(const long mod_date, const char *known_date, const long kno
 
 	char issue[10];
 	snprintf(issue, 10, "%ld", ((mod_date + known_issue_long)
-				    - (past_date - selected_date) / (60*60*24) ) );
+				    - (past_date - selected_date)/(60*60*24)));
 
 	const char *e = ".pdf";
 
@@ -326,7 +325,6 @@ static char *get_url(const long mod_date, const char *known_date, const long kno
 static void open_file(char *path)
 {
 	int ret;
-	// TODO: improve the line below.
 	char *cmd[] = { " ", path, (char *) NULL };
 	pid_t child;
 
@@ -343,9 +341,9 @@ static void open_file(char *path)
 		}
 	}
  	/* For platforms below, open the file with "xdg-open" */
-	else if (   strcmp(get_platform_name(), "linux") == 0
-		|| (strcmp(get_platform_name(), "bsd") == 0)
-		|| (strcmp(get_platform_name(), "solaris") == 0)) {
+	else if (strcmp(get_platform_name(), "linux") == 0
+		 || (strcmp(get_platform_name(), "bsd") == 0)
+		 || (strcmp(get_platform_name(), "solaris") == 0)) {
 		child = fork();
 		if (0 == child) {
 			ret = execvp("xdg-open", cmd);
@@ -355,7 +353,7 @@ static void open_file(char *path)
 				exit(1);
 			}
 		}
-	/* If the platform is cygwin, open the file with "cygstart" */
+		/* If the platform is cygwin, open the file with "cygstart" */
 	} else if (strcmp(get_platform_name(), "cygwin") == 0) {
 		child = fork();
 		if (0 == child) {
@@ -367,7 +365,8 @@ static void open_file(char *path)
 			}
 		}
 	} else {
-		fprintf(stderr, "Unable to open the file in %s.", get_platform_name());
+		fprintf(stderr, "Unable to open the file in %s.",
+			get_platform_name());
 		fprintf(stderr, "Please report this error to the program's maintainer.");
 		exit(1);
 	}
@@ -396,7 +395,8 @@ static int download(const char *path, const char *etc_url)
 	/* Switch on full protocol/debug output while testing */
 	curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
 
-	/* disable progress meter, set to 0L to enable and disable debug output */
+	/* disable progress meter, set to 0L to enable and disable
+	   debug output */
 	curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L);
 
 	/* we want the headers be sent to the header_callback function */
@@ -434,8 +434,9 @@ static int download(const char *path, const char *etc_url)
 				return 1;
 			}
 
-		} else
+		} else {
 			fprintf(stderr, "Unable to open the file %s for writing.\n", path);
+		}
 	}
 
 	/* cleanup curl stuff */
@@ -443,4 +444,43 @@ static int download(const char *path, const char *etc_url)
 	curl_global_cleanup();
 
 	return 0;
+}
+
+static int decrease_month(char *etc_url)
+{
+	int mon_snd_digit = 0;
+	if (sscanf(etc_url+48, "%d", &mon_snd_digit) != 1) {
+		return -1;
+	}
+	if ((strcmp(etc_url+47, "0") == 0) &&
+	    (strcmp(etc_url+48, "1") == 0)) {
+		return -1;
+	} else if ((strcmp(etc_url+47, "1") == 0) &&
+		   (strcmp(etc_url+48, "0") == 0)) {
+		etc_url[47] = '0'; etc_url[48] = '9';
+	} else {
+		mon_snd_digit--;
+	}
+	etc_url[48] = mon_snd_digit + '0';
+
+	return 0;
+}
+
+static void update_config(FILE *conf, char *config_path, char *etc_url)
+{
+	if ((conf = fopen(config_path, "w")) == NULL) {
+		fprintf(stderr, "Unable to update the config file \"%s\".\n", config_path);
+	} else {
+		fprintf(conf, "20%c%c-%c%c-%c%c", etc_url[59], etc_url[60],
+			etc_url[61], etc_url[62], etc_url[63], etc_url[64]);
+		fprintf(conf, "\n");
+		fprintf(conf, "%c", etc_url[67]);
+		if (isdigit(etc_url[68]) != 0)
+			fprintf(conf, "%c", etc_url[68]);
+		if (isdigit(etc_url[69]) != 0)
+			fprintf(conf, "%c", etc_url[69]);
+		fprintf(conf, "\n");
+		fclose(conf);
+		printf("The config file has been updated.\n");
+	}
 }
