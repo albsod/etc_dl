@@ -20,13 +20,17 @@ a previous or even a future issue my means of date arithmetic,
 and then download it using libcurl.  Run the program with the
 -h option for complete usage information.
 
+The program can be compiled for at least GNU/Linux, macOS
+and Windows/Cygwin without modifications.
+
 
 Compilation and installation
 ----------------------------
 
 1. Install a curl development package, e.g.
    libcurl4-gnutls-dev or libcurl4-openssl-dev
-   on Debian GNU/Linux and derivatives
+   on Debian GNU/Linux and derivatives or libcurl-devel
+   on Windows/Cygwin.
 
 2. Run make
 
@@ -37,9 +41,11 @@ Compilation and installation
 Configuration
 -------------
 
-The program will create a configuration file at
-"~/.config/etc-dl/config".  This should contain the last
-known good date and issue.
+The program will create a configuration file that should
+contain the last known date and issue.  In Windows/Cygwin,
+it will be created as "config.txt" in the same directory as
+the binary.  Otherwise, it will be located in "~/.config/
+etc-dl/config".
 
 
 Known limitations
