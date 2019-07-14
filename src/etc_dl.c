@@ -54,8 +54,6 @@ int main(int argc, char *argv[])
 	int opt, printurl = 0, openpdf = 0, target = 0, errflg = 0;
 	long mod_date = 0;
 	char *target_dir = NULL;
-	extern char *optarg;
-	extern int optind, opterr, optopt;
 
 	while ((opt = getopt(argc, argv, ":hvuod:t:")) != -1) {
 		switch(opt) {
@@ -108,20 +106,25 @@ int main(int argc, char *argv[])
 	char known_date[11] = "2019-07-07";
 	char known_issue[4] = "181";
 
-	/* Create config directory */
-	char *config_dir = "/.config/etc-dl/";
 	char config_path[PATH_SIZE] = "";
-	strcat(config_path, getenv("HOME"));
-	strcat(config_path, config_dir);
+	/* If platform is windows, save config file in the current directory */
+	if ((0 == strcmp(get_platform_name(),"windows")) || (0 == strcmp(get_platform_name(),"cygwin"))) {
+		strcpy(config_path, "config.txt");
+	} else {
+		/* Create config directory */
+		char *config_dir = "/.config/etc-dl/";
+		strcat(config_path, getenv("HOME"));
+		strcat(config_path, config_dir);
 
-	struct stat st = {0};
+		struct stat st = {0};
 
-	if (stat(config_path, &st) == -1) {
-		mkdir(config_path, 0700);
-		printf("Configuration directory created at \"%s\".\n",
-		       config_path);
+		if (stat(config_path, &st) == -1) {
+			mkdir(config_path, 0700);
+			printf("Configuration directory created at \"%s\".\n",
+			       config_path);
+		}
+		strcat(config_path, "config");
 	}
-	strcat(config_path, "config");
 
 	FILE *conf;
 	if ((conf = fopen(config_path, "r")) != NULL) {
@@ -200,9 +203,9 @@ int main(int argc, char *argv[])
 
 		return 0;
 	} else {
-	        /* Retry download using a different URL */
+		/* Retry download using a different URL */
 		/* Decrease the month by one and try again */
-		printf("Decreasing the month in URL.\n");
+		printf("Decreasing the month.\n");
 		if (decrease_month(etc_url) == -1) {
 			fprintf(stderr, "Unable to to decrease the month.\n");
 		} else if (download(path, etc_url) == 0) {
@@ -217,7 +220,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	printf("Decreasing the issue number in URL.\n");
+	printf("Decreasing the issue number.\n");
 	free(etc_url);
 	free(path);
 	for (int i = 0; i < 15; i++) {
@@ -340,7 +343,7 @@ static void open_file(char *path)
 			}
 		}
 	}
- 	/* For platforms below, open the file with "xdg-open" */
+	/* For platforms below, open the file with "xdg-open" */
 	else if (strcmp(get_platform_name(), "linux") == 0
 		 || (strcmp(get_platform_name(), "bsd") == 0)
 		 || (strcmp(get_platform_name(), "solaris") == 0)) {
@@ -353,7 +356,7 @@ static void open_file(char *path)
 				exit(1);
 			}
 		}
-		/* If the platform is cygwin, open the file with "cygstart" */
+        /* If the platform is cygwin, open the file with "cygstart" */
 	} else if (strcmp(get_platform_name(), "cygwin") == 0) {
 		child = fork();
 		if (0 == child) {
