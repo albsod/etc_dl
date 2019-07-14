@@ -20,7 +20,7 @@ void help_option(char *argv)
 
 void version_option(void)
 {
-	printf("ETC-dl 0.3.2\n");
+	printf("ETC-dl 1.0\n");
 	printf("Copyright © 2018-2019 Albin Söderqvist\n");
 	printf("License: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>\n");
 	printf("This is free software, and you are welcome to redistribute it.\n");
