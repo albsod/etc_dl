@@ -8,7 +8,7 @@
  * the Free Software Foundation, either version 3 of the License, or   
  * (at your option) any later version.				       
  * 								
- * This program is distributed in the hope that it will be useful,
+ * ETC-dl is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of 
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the  
  * GNU General Public License for more details.			  
@@ -18,9 +18,9 @@
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
- * This program makes use of the curl library.
- * Copyright © 1996-2019  Daniel Stenberg <daniel@haxx.se>, et al.
- * See the Copyright and permission notice in src/libcurl/COPYING.
+ * This file consists of example code from the curl project
+ * Copyright (c) 1996-2019  Daniel Stenberg <daniel@haxx.se> et al.
+ * See the copyright and permission notice included with this program.
  *
  **************************************************************************/
 

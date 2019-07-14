@@ -18,9 +18,9 @@
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
- * This program makes use of the curl library
- * Copyright © 1996-2019  Daniel Stenberg <daniel@haxx.se> et al.
- * See the copyright and permission notice in your libcurl package.
+ * This file consists of example code from the curl project
+ * Copyright (c) 1996-2019  Daniel Stenberg <daniel@haxx.se> et al.
+ * See the copyright and permission notice included with this program.
  *
  **************************************************************************/
 
@@ -51,4 +51,3 @@ size_t header_callback(char *buffer, size_t size,
 	/* The pointer named userdata is the one you set with the CURLOPT_HEADERDATA option. */
 	return nitems * size;
 }
-

@@ -18,9 +18,9 @@
  *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  *
- * This program includes code from the the curl project
+ * The download function in this file consists of code from the curl project
  * Copyright (c) 1996-2019  Daniel Stenberg <daniel@haxx.se> et al.
- * See the copyright and permission notice in your libcurl package.
+ * See the copyright and permission notice included with this program.
  *
  **************************************************************************/
 
@@ -54,6 +54,8 @@ int main(int argc, char *argv[])
 	int opt, printurl = 0, openpdf = 0, target = 0, errflg = 0;
 	long mod_date = 0;
 	char *target_dir = NULL;
+	struct stat st = {0};
+
 
 	while ((opt = getopt(argc, argv, ":hvuod:t:")) != -1) {
 		switch(opt) {
@@ -67,6 +69,12 @@ int main(int argc, char *argv[])
 			printurl = 1;
 			break;
 		case 't':
+			if (stat(optarg, &st) == -1) {
+				fprintf(stderr, "%s is not a valid target directory\n",
+					optarg);
+				errflg++;
+				break;
+			}
 			target = 1;
 			target_dir = optarg;
 			/* Remove trailing '/' */
@@ -101,22 +109,24 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "  -v        print version information and exit\n");
 		exit(1);
 	}
+	/* Config */
 
-	/* Fallback values, in case there is no config file */
+	/* Fallback values initialized */
 	char known_date[11] = "2019-07-07";
 	char known_issue[4] = "181";
 
 	char config_path[PATH_SIZE] = "";
-	/* If platform is windows, save config file in the current directory */
-	if ((0 == strcmp(get_platform_name(),"windows")) || (0 == strcmp(get_platform_name(),"cygwin"))) {
+
+	/* If the platform is Windows, place config file in the same directory
+	   as the executable */
+	if ((0 == strcmp(get_platform_name(),"windows")) ||
+	    (0 == strcmp(get_platform_name(),"cygwin"))) {
 		strcpy(config_path, "config.txt");
 	} else {
 		/* Create config directory */
 		char *config_dir = "/.config/etc-dl/";
 		strcat(config_path, getenv("HOME"));
 		strcat(config_path, config_dir);
-
-		struct stat st = {0};
 
 		if (stat(config_path, &st) == -1) {
 			mkdir(config_path, 0700);
@@ -152,10 +162,9 @@ int main(int argc, char *argv[])
 			fprintf(conf, "\n");
 			fclose(conf);
 		}
-
 	}
 
-	/* Verify date and issue format; exit if any is invalid */
+	/* Verify date and issue format; exit if any of them is invalid */
 	for (int i = 0; i < 10; i++) {
 		if (isdigit(known_date[i]) == 0 && known_date[i] != '-') {
 			fprintf(stderr, "Invalid date format. Please edit \"%s\" and try again.\n",
@@ -356,7 +365,7 @@ static void open_file(char *path)
 				exit(1);
 			}
 		}
-        /* If the platform is cygwin, open the file with "cygstart" */
+	/* If the platform is cygwin, open the file with "cygstart" */
 	} else if (strcmp(get_platform_name(), "cygwin") == 0) {
 		child = fork();
 		if (0 == child) {
