@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
 			printurl = 1;
 			break;
 		case 't':
+			/* Validate input */
 			if (stat(optarg, &st) == -1) {
 				fprintf(stderr, "%s is not a valid target directory\n",
 					optarg);
@@ -83,8 +84,16 @@ int main(int argc, char *argv[])
 				target_dir[len-1] = '\0';
 			break;
 		case 'd':
-			mod_date = strtol(optarg, NULL, 10);
-			break;
+			/* Validate input */
+			if ((isdigit(optarg[0])) || ((optarg[0] == '-') && isdigit(optarg[1]))) {
+				mod_date = strtol(optarg, NULL, 10);
+				break;
+			} else {
+				fprintf(stderr, "%s is not a valid number\n",
+					optarg);
+				errflg++;
+				break;
+			}
 		case 'o':
 			openpdf = 1;
 			break;

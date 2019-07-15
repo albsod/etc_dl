@@ -1,9 +1,9 @@
 ETC-dl as a whole is licensed under the GPLv3 or, at your option, any later
-version by the FSF.  The files curly.c, curly.h and the download function
-in etc_dl.c consists of example code from the curl project that is under the
-curl license (see COPYRIGHT AND PERMISSION NOTICE below).
+version.  The files curly.c, curly.h and the download function in etc_dl.c
+consist of example code from the curl project that is under the curl license
+(see COPYRIGHT AND PERMISSION NOTICE below).
 
-***************************************************************************
+****************************************************************************
 
                     GNU GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
